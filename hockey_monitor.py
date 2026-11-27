@@ -13,7 +13,7 @@ def main():
     now=datetime.now(timezone.utc)
     path=Path("hockey_state.enc")
     secret=os.environ["HOCKEY_STATE_SECRET"]
-    state=load(path,secret,initialize=os.getenv("HOCKEY_INITIALIZE","").strip().lower()=="true")
+    state=load(path,secret,initialize=False)
     key=os.environ["BIGBALLS_API_KEY"]
     budget=state.setdefault("budget",{})
     slot=int(now.timestamp())//300
@@ -42,6 +42,7 @@ def main():
         except (OSError,ValueError):
             print("HOCKEY_REQUEST unavailable")
             continue
+        print("HOCKEY_HTTP",200)
         batch=data.get("data") if isinstance(data,dict) else None
         if not isinstance(batch,list):
             print("HOCKEY_RESPONSE invalid")
@@ -52,9 +53,9 @@ def main():
     rows=list(rows_by_id.values())
     # Log only non-sensitive schema evidence, never infer periods from arrays.
     for row in rows:
-        if not isinstance(row,dict) or row.get("status")!="live":
+        if not isinstance(row,dict) or row.get("status") not in ("live","finished"):
             continue
-        evidence={k:row[k] for k in ("round","period","current_period","period_number","clock","score","linescore") if k in row}
+        evidence={k:row[k] for k in ("status","round","period","current_period","period_number","clock","score","linescore") if k in row}
         print("HOCKEY_PERIOD_EVIDENCE",json.dumps(evidence)[:2000])
     print("HOCKEY_REPORT",json.dumps(cycle(state,rows,[],now)))
     print("HOCKEY_BUDGET",json.dumps(budget))
