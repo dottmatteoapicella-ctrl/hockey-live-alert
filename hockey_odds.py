@@ -27,7 +27,7 @@ def prematch(row,now):
         return None
     prices={}
     for q in row.get("quotes") or []:
-        if not isinstance(q,dict) or str(q.get("group_id"))!="972" or str(q.get("market_id"))!="973" or q.get("group_name")!="Game" or q.get("line")!="To Win" or q.get("suspended") not in (False,None) or q.get("phase") not in (None,"prematch","pre_match"):
+        if not isinstance(q,dict) or str(q.get("group_id"))!="972" or str(q.get("market_id"))!="973" or q.get("group_name")!="Game" or q.get("line")!="To Win" or q.get("suspended") is not False or q.get("phase") not in (None,"prematch","pre_match"):
             continue
         side=name(q.get("side"))
         ts=stamp(q.get("ts"))
