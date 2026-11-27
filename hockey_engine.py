@@ -7,7 +7,9 @@ from datetime import timedelta
 
 def cycle(state, matches, odds, now):
     cache=state.setdefault("prematch",{})
+    # Keep the earliest verified snapshot, including legacy alias keys.
     accepted=0
+    preserved=0
     nhl_rows=0
     for row in odds:
         if not isinstance(row,dict):
@@ -18,7 +20,12 @@ def cycle(state, matches, odds, now):
         if record:
             accepted+=1
             key="|".join(sorted(record["teams"]))+"|"+record["start"]
-            cache[key]=record
+            equivalent=[(k,v) for k,v in cache.items() if isinstance(v,dict) and set(name(t) for t in v.get("teams",[]))==set(record["teams"]) and stamp(v.get("start"))==stamp(record["start"])]
+            earlier=[(k,v) for k,v in equivalent if stamp(v.get("captured")) and stamp(v["captured"])<=stamp(record["captured"])]
+            if earlier:
+                preserved+=1
+            else:
+                cache[key]=record
     for key,record in list(cache.items()):
         start=stamp(record.get("start"))
         if not start or start<now-timedelta(days=3):
@@ -48,4 +55,4 @@ def cycle(state, matches, odds, now):
             report["favorites"]+=1
         if not decoded["confirmed_periods"]:
             report["unconfirmed_periods"]+=1
-    return dict(cycle=report,cached=len(cache),odds_rows=len(odds),nhl_odds_rows=nhl_rows,prematch_accepted=accepted,matching=matching,unmatched=evidence,cached_fixtures=[dict(teams=r["teams"],start=r["start"]) for r in list(cache.values())[:40]],statistics=statistics(state))
+    return dict(cycle=report,cached=len(cache),odds_rows=len(odds),nhl_odds_rows=nhl_rows,prematch_accepted=accepted,prematch_preserved=preserved,matching=matching,unmatched=evidence,cached_fixtures=[dict(teams=r["teams"],start=r["start"],captured=r.get("captured")) for r in list(cache.values())[:40]],statistics=statistics(state))
