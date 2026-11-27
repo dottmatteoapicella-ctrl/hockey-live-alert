@@ -7,11 +7,16 @@ from datetime import timedelta
 
 def cycle(state, matches, odds, now):
     cache=state.setdefault("prematch",{})
+    accepted=0
+    nhl_rows=0
     for row in odds:
         if not isinstance(row,dict):
             continue
+        if str(row.get("league","")).strip().casefold()=="nhl":
+            nhl_rows+=1
         record=prematch(row,now)
         if record:
+            accepted+=1
             key="|".join(sorted(record["teams"]))+"|"+record["start"]
             cache[key]=record
     for key,record in list(cache.items()):
@@ -38,4 +43,4 @@ def cycle(state, matches, odds, now):
             report["favorites"]+=1
         if not decoded["confirmed_periods"]:
             report["unconfirmed_periods"]+=1
-    return dict(cycle=report,cached=len(cache),statistics=statistics(state))
+    return dict(cycle=report,cached=len(cache),odds_rows=len(odds),nhl_odds_rows=nhl_rows,prematch_accepted=accepted,statistics=statistics(state))
