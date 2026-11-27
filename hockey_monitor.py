@@ -40,7 +40,14 @@ def main():
     if not isinstance(rows,list):
         print("HOCKEY_RESPONSE invalid")
         return
+    # Log only non-sensitive schema evidence, never infer periods from arrays.
+    for row in rows:
+        if not isinstance(row,dict) or row.get("status")!="live":
+            continue
+        evidence={k:row[k] for k in ("round","period","current_period","period_number","clock","score","linescore") if k in row}
+        print("HOCKEY_PERIOD_EVIDENCE",json.dumps(evidence)[:2000])
     print("HOCKEY_REPORT",json.dumps(cycle(state,rows,[],now)))
+    print("HOCKEY_BUDGET",json.dumps(budget))
     save(path,secret,state)
 
 if __name__=="__main__":
