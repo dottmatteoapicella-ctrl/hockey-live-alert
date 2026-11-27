@@ -17,7 +17,8 @@ class Telegram:
         return result.get("result") if isinstance(result,dict) and result.get("ok") is True else None
     def send(self,text):
         result=self.call("sendMessage",{"text":text})
-        return result.get("message_id") if isinstance(result,dict) else None
+        mid = result.get("message_id") if isinstance(result,dict) else None
+        return mid if type(mid) is int and mid > 0 else None
     def edit(self,message_id,text):
         return self.call("editMessageText",{"message_id":message_id,"text":text}) is not None
 
