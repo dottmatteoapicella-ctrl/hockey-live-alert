@@ -12,4 +12,12 @@ class OddsTest(unittest.TestCase):
         self.assertEqual(favorite(row,[record]),(0,[1.6,2.3]))
         self.assertIsNone(favorite(row,[record,record]))
         row["quotes"][0]["suspended"]=None
+        self.assertIsNotNone(prematch(row,now))
+        row["quotes"][0]["suspended"]=True
+        self.assertIsNone(prematch(row,now))
+        row["quotes"][0]["suspended"]=None
+        row["quotes"][0]["phase"]="live"
+        self.assertIsNone(prematch(row,now))
+        row["quotes"][0]["phase"]=None
+        row["quotes"][0]["ts"]="2026-11-27T15:00:00Z"
         self.assertIsNone(prematch(row,now))
