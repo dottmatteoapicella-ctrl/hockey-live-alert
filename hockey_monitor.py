@@ -4,6 +4,7 @@ from pathlib import Path
 from hockey_state import load,save
 from hockey_strategy import reserve
 from hockey_engine import cycle
+from hockey_odds_budget import reserve_odds
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args,**kwargs):
@@ -57,7 +58,27 @@ def main():
             continue
         evidence={k:row[k] for k in ("status","round","period","current_period","period_number","clock","score","linescore") if k in row}
         print("HOCKEY_PERIOD_EVIDENCE",json.dumps(evidence)[:2000])
-    print("HOCKEY_REPORT",json.dumps(cycle(state,rows,[],now)))
+    odds=[]
+    odds_key=os.getenv("MOVIODDS_API_KEY")
+    if odds_key and reserve_odds(state,now):
+        save(path,secret,state)
+        try:
+            req=urllib.request.Request("https://moviodds.com/odds?sport=ice_hockey",headers={"X-API-Key":odds_key,"Accept":"application/json"})
+            with urllib.request.build_opener(NoRedirect()).open(req,timeout=25) as response:
+                payload=json.load(response)
+            batch=payload.get("matches") if isinstance(payload,dict) else None
+            if isinstance(batch,list):
+                odds=batch
+            print("HOCKEY_ODDS_HTTP",200,"rows",len(odds))
+        except urllib.error.HTTPError as e:
+            if e.code in (401,403,429):
+                state["odds_budget"]["blocked"]=True
+            print("HOCKEY_ODDS_HTTP",e.code)
+        except (OSError,ValueError):
+            print("HOCKEY_ODDS unavailable")
+        save(path,secret,state)
+    print("HOCKEY_ODDS_BUDGET",json.dumps(state.get("odds_budget",{})))
+    print("HOCKEY_REPORT",json.dumps(cycle(state,rows,odds,now)))
     print("HOCKEY_BUDGET",json.dumps(budget))
     save(path,secret,state)
 
