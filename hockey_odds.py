@@ -19,6 +19,8 @@ def name(value):
     return next((team for team,aliases in ALIASES.items() if normalized in aliases),normalized)
 
 def prematch(row,now):
+    if not isinstance(row,dict):
+        return None
     if row.get("in_play") is not False or row.get("stale") is True or str(row.get("league","")).strip().casefold()!="nhl":
         return None
     start,poll=stamp(row.get("kickoff_utc")),stamp(row.get("polled_at"))
@@ -26,13 +28,13 @@ def prematch(row,now):
     if not start or not poll or start<=now or not timedelta(0)<=now-poll<=timedelta(minutes=15) or not all(teams) or teams[0]==teams[1]:
         return None
     prices={}
-    for q in row.get("quotes") or []:
-        if not isinstance(q,dict) or str(q.get("group_id"))!="972" or str(q.get("market_id"))!="973" or q.get("group_name")!="Game" or q.get("line")!="To Win" or q.get("suspended") is not False or q.get("phase") not in (None,"prematch","pre_match"):
+    for q in row["quotes"] if isinstance(row.get("quotes"),list) else []:
+        if not isinstance(q,dict) or str(q.get("group_id"))!="972" or str(q.get("market_id"))!="973" or q.get("group_name")!="Game" or q.get("line")!="To Win" or (q.get("suspended") is not False and q.get("suspended") is not None) or q.get("phase") not in (None,"prematch","pre_match"):
             continue
         side=name(q.get("side"))
         ts=stamp(q.get("ts"))
         p=q.get("odds_dec")
-        if side not in teams or not ts or not timedelta(0)<=now-ts<=timedelta(hours=2) or ts>=start or type(p) not in (int,float) or not math.isfinite(p) or p<=1:
+        if side not in teams or not ts or not timedelta(0)<=now-ts<=timedelta(hours=2) or ts>=start or ts>poll or type(p) not in (int,float) or not math.isfinite(p) or p<=1:
             continue
         if side in prices and prices[side]!=p:
             return None
