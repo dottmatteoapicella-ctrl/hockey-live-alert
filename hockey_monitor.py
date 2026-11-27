@@ -13,7 +13,7 @@ def main():
     now=datetime.now(timezone.utc)
     path=Path("hockey_state.enc")
     secret=os.environ["HOCKEY_STATE_SECRET"]
-    state=load(path,secret,initialize=os.getenv("HOCKEY_INITIALIZE")=="true")
+    state=load(path,secret,initialize=os.getenv("HOCKEY_INITIALIZE","").strip().lower()=="true")
     key=os.environ["BIGBALLS_API_KEY"]
     budget=state.setdefault("budget",{})
     slot=int(now.timestamp())//300
