@@ -1,11 +1,6 @@
 name: Hockey Shadow Monitor
 on:
   workflow_dispatch:
-    inputs:
-      initialize:
-        description: Initialize archive only on first run
-        type: boolean
-        default: false
 permissions:
   contents: write
 concurrency:
@@ -27,7 +22,6 @@ jobs:
         env:
           BIGBALLS_API_KEY: ${{ secrets.BIGBALLS_API_KEY }}
           HOCKEY_STATE_SECRET: ${{ secrets.HOCKEY_STATE_SECRET }}
-          HOCKEY_INITIALIZE: ${{ inputs.initialize }}
       - name: Persist encrypted state
         if: always()
         run: |
