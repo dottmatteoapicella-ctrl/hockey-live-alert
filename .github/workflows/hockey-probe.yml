@@ -15,7 +15,7 @@ jobs:
         run: |
           python - <<'PY'
           import os,json,urllib.request,urllib.error
-          from datetime import datetime,timezone
+          from datetime import datetime,timezone,timedelta
           class NoRedirect(urllib.request.HTTPRedirectHandler):
               def redirect_request(self,*args,**kwargs): return None
           def get(label,url,key,header):
@@ -32,7 +32,7 @@ jobs:
               except urllib.error.HTTPError as e: print(label,"HTTP",e.code)
               except (OSError,ValueError): print(label,"unavailable")
               return {}
-          day=datetime.now(timezone.utc).date().isoformat()
+          day=(datetime.now(timezone.utc)-timedelta(days=2)).date().isoformat()
           a=get("NHL","https://api.bigballsdata.com/v1/matches?sport=ice_hockey&league=nhl&date="+day+"&limit=50",os.getenv("BIGBALLS_API_KEY"),"x-api-key")
           rows=a.get("data") or []
           if isinstance(rows,list):
@@ -40,7 +40,7 @@ jobs:
               for m in rows[:10]:
                   if isinstance(m,dict):
                       print("Fields",sorted(m))
-                      print("Sample",json.dumps({k:m.get(k) for k in ("status","score","linescore","period","clock","kickoff","start_time","updated_at")}))
+                      print("Sample",json.dumps({k:m.get(k) for k in ("status","score","linescore","home","away","kickoff_utc")}))
           b=get("Odds","https://moviodds.com/odds?sport=ice_hockey",os.getenv("MOVIODDS_API_KEY"),"X-API-Key")
           rows=b.get("matches") or []
           if isinstance(rows,list):
@@ -55,4 +55,11 @@ jobs:
               print("Markets",json.dumps(groups))
               if rows and isinstance(rows[0],dict):
                   print("Odds fields",sorted(rows[0]))
+                  for m in rows:
+                      if m.get("in_play") is False and "nhl" in str(m.get("league","")).lower():
+                          print("NHL odds sample",json.dumps({k:m.get(k) for k in ("home","away","league","kickoff_utc","polled_at","stale")}))
+                          for q in m.get("quotes") or []:
+                              if q.get("group_name") in ("Game","3-Way"):
+                                  print("Market sample",json.dumps({k:q.get(k) for k in ("group_name","group_id","market_id","side","line","phase","suspended","odds_dec","ts")}))
+                          break
           PY
