@@ -1,0 +1,5 @@
+*.enc
+*.tmp
+.env
+__pycache__/
+hockey_state.json
