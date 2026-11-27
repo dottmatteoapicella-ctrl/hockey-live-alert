@@ -26,6 +26,8 @@ jobs:
         env:
           BIGBALLS_API_KEY: ${{ secrets.BIGBALLS_API_KEY }}
           MOVIODDS_API_KEY: ${{ secrets.MOVIODDS_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           HOCKEY_STATE_SECRET: ${{ secrets.HOCKEY_STATE_SECRET }}
       - name: Persist encrypted state
         if: always()
