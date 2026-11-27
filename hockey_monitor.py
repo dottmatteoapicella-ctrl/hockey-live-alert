@@ -4,6 +4,8 @@ from pathlib import Path
 from hockey_state import load,save
 from hockey_strategy import reserve
 from hockey_engine import cycle
+from hockey_delivery import deliver_h2
+from hockey_telegram import Telegram
 from hockey_odds_budget import reserve_odds
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -78,7 +80,13 @@ def main():
             print("HOCKEY_ODDS unavailable")
         save(path,secret,state)
     print("HOCKEY_ODDS_BUDGET",json.dumps(state.get("odds_budget",{})))
-    print("HOCKEY_REPORT",json.dumps(cycle(state,rows,odds,now)))
+    report=cycle(state,rows,odds,now)
+    token,chat=os.getenv("TELEGRAM_BOT_TOKEN"),os.getenv("TELEGRAM_CHAT_ID")
+    if token and chat:
+        deliver_h2(state,rows,Telegram(token,chat),lambda:save(path,secret,state),enabled=True,final_winner_verified=False)
+    from hockey_tracking import statistics
+    report["statistics"]=statistics(state)
+    print("HOCKEY_REPORT",json.dumps(report))
     print("HOCKEY_BUDGET",json.dumps(budget))
     save(path,secret,state)
 
