@@ -43,17 +43,41 @@ def prematch(row,now):
         return None
     return dict(teams=teams,prices=prices,start=start.isoformat(),captured=now.isoformat())
 
-def favorite(row,records):
+def favorite_diagnostic(row,records):
     teams=[name(row.get(k)) for k in ("home","away")]
     start=stamp(row.get("kickoff_utc"))
     if not start or not all(teams) or teams[0]==teams[1]:
-        return None
+        return None,"invalid_live_identity"
     candidates=[]
+    reasons=set()
     for r in records:
+        if not isinstance(r,dict):
+            continue
+        rt=set(r.get("teams",[]))
+        if rt!=set(teams):
+            if rt.intersection(teams):
+                reasons.add("one_team_only")
+            continue
         rs,cap=stamp(r.get("start")),stamp(r.get("captured"))
-        if set(r.get("teams",[]))!=set(teams) or not rs or not cap or cap>=min(rs,start) or abs(rs-start)>timedelta(minutes=30):
+        if not rs or not cap or cap>=min(rs,start):
+            reasons.add("invalid_capture")
+            continue
+        if abs(rs-start)>timedelta(minutes=30):
+            reasons.add("kickoff_mismatch")
             continue
         p=[r.get("prices",{}).get(t) for t in teams]
         if all(type(x) in (int,float) and math.isfinite(x) and x>1 for x in p) and p[0]!=p[1]:
             candidates.append((0 if p[0]<p[1] else 1,p))
-    return candidates[0] if len(candidates)==1 else None
+        else:
+            reasons.add("invalid_prices")
+    if len(candidates)==1:
+        return candidates[0],"matched"
+    if candidates:
+        return None,"ambiguous"
+    for reason in ("invalid_prices","kickoff_mismatch","invalid_capture","one_team_only"):
+        if reason in reasons:
+            return None,reason
+    return None,"no_cached_team_pair"
+
+def favorite(row,records):
+    return favorite_diagnostic(row,records)[0]
