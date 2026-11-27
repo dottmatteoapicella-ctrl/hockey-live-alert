@@ -1,0 +1,45 @@
+name: Hockey Archive Bootstrap
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: hockey-shadow-state
+  cancel-in-progress: false
+jobs:
+  bootstrap:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install cryptography==46.0.3
+      - name: Initialize or verify archive
+        env:
+          HOCKEY_STATE_SECRET: ${{ secrets.HOCKEY_STATE_SECRET }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from hockey_state import load, save
+          p = Path("hockey_state.enc")
+          secret = os.environ["HOCKEY_STATE_SECRET"]
+          if not secret:
+              raise RuntimeError("Missing encryption secret")
+          if p.exists():
+              load(p, secret)
+              print("HOCKEY_ARCHIVE verified")
+          else:
+              save(p, secret, {})
+              load(p, secret)
+              print("HOCKEY_ARCHIVE initialized")
+          PY
+      - name: Persist encrypted archive
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add -f hockey_state.enc
+          git diff --cached --quiet || git commit -m "Initialize encrypted hockey archive"
+          git push
