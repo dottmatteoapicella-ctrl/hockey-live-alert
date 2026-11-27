@@ -1,6 +1,8 @@
 name: Hockey Shadow Monitor
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
 permissions:
   contents: write
 concurrency:
@@ -8,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   monitor:
-    if: vars.HOCKEY_MONITOR_ENABLED == 'true'
+    if: github.ref == 'refs/heads/main' && vars.HOCKEY_MONITOR_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
