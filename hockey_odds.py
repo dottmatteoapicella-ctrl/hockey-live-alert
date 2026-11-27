@@ -10,10 +10,13 @@ def stamp(value):
     except (AttributeError,ValueError,TypeError):
         return None
 
+ALIASES = {"washingtoncapitals":["wascapitals","was"],"floridapanthers":["flapanthers","fla"],"bostonbruins":["bosbruins","bos"],"torontomapleleafs":["tormapleleafs","tor"]}
+
 def name(value):
     if isinstance(value,dict):
         value=value.get("name")
-    return re.sub(r"[^a-z0-9]","",value.casefold()) if isinstance(value,str) else ""
+    normalized=re.sub(r"[^a-z0-9]","",value.casefold()) if isinstance(value,str) else ""
+    return next((team for team,aliases in ALIASES.items() if normalized in aliases),normalized)
 
 def prematch(row,now):
     if row.get("in_play") is not False or row.get("stale") is True or str(row.get("league","")).strip().casefold()!="nhl":
@@ -24,7 +27,7 @@ def prematch(row,now):
         return None
     prices={}
     for q in row.get("quotes") or []:
-        if not isinstance(q,dict) or str(q.get("group_id"))!="972" or str(q.get("market_id"))!="973" or q.get("group_name")!="Game" or q.get("line")!="To Win" or q.get("suspended") is not False:
+        if not isinstance(q,dict) or str(q.get("group_id"))!="972" or str(q.get("market_id"))!="973" or q.get("group_name")!="Game" or q.get("line")!="To Win" or q.get("suspended") not in (False,None) or q.get("phase") not in (None,"prematch","pre_match"):
             continue
         side=name(q.get("side"))
         ts=stamp(q.get("ts"))
