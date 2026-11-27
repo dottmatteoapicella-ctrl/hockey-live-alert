@@ -1,6 +1,6 @@
 """Shadow engine: no network or Telegram delivery."""
 from hockey_feed import decode
-from hockey_odds import prematch, favorite, stamp
+from hockey_odds import prematch, favorite_diagnostic, stamp, name
 from hockey_tracking import statistics
 from hockey_strategy import pair
 from datetime import timedelta
@@ -24,13 +24,18 @@ def cycle(state, matches, odds, now):
         if not start or start<now-timedelta(days=3):
             del cache[key]
     report=dict(live=0,valid_scores=0,favorites=0,unconfirmed_periods=0,alerts=0,h2_candidates=0,total_scores=0)
+    matching={}
+    evidence=[]
     for row in matches:
         if not isinstance(row,dict) or row.get("status")!="live":
             continue
         report["live"]+=1
         score=row.get("score")
         total=[score.get("home"),score.get("away")] if isinstance(score,dict) else None
-        fav=favorite(row,cache.values())
+        fav,reason=favorite_diagnostic(row,cache.values())
+        matching[reason]=matching.get(reason,0)+1
+        if fav is None and len(evidence)<20:
+            evidence.append(dict(teams=[name(row.get(k)) for k in ("home","away")],kickoff=str(row.get("kickoff_utc"))[:40],reason=reason))
         if pair(total) and row.get("id") is not None:
             report["total_scores"]+=1
             if fav is not None and total[1-fav[0]]-total[fav[0]]>=2:
@@ -43,4 +48,4 @@ def cycle(state, matches, odds, now):
             report["favorites"]+=1
         if not decoded["confirmed_periods"]:
             report["unconfirmed_periods"]+=1
-    return dict(cycle=report,cached=len(cache),odds_rows=len(odds),nhl_odds_rows=nhl_rows,prematch_accepted=accepted,statistics=statistics(state))
+    return dict(cycle=report,cached=len(cache),odds_rows=len(odds),nhl_odds_rows=nhl_rows,prematch_accepted=accepted,matching=matching,unmatched=evidence,cached_fixtures=[dict(teams=r["teams"],start=r["start"]) for r in list(cache.values())[:40]],statistics=statistics(state))
