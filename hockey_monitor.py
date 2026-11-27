@@ -1,5 +1,5 @@
 import os,json,urllib.request,urllib.error
-from datetime import datetime,timezone
+from datetime import datetime,timezone,timedelta
 from pathlib import Path
 from hockey_state import load,save
 from hockey_strategy import reserve
@@ -22,24 +22,34 @@ def main():
         return
     state["last_slot"]=slot
     save(path,secret,state)
-    url="https://api.bigballsdata.com/v1/matches?sport=ice_hockey&league=nhl&date="+now.date().isoformat()+"&limit=50"
-    try:
-        req=urllib.request.Request(url,headers={"x-api-key":key,"Accept":"application/json"})
-        with urllib.request.build_opener(NoRedirect()).open(req,timeout=25) as response:
-            data=json.load(response)
-    except urllib.error.HTTPError as e:
-        if e.code in (401,403,429):
-            budget["blocked"]=True
-        save(path,secret,state)
-        print("HOCKEY_HTTP",e.code)
-        return
-    except (OSError,ValueError):
-        print("HOCKEY_REQUEST unavailable")
-        return
-    rows=data.get("data") if isinstance(data,dict) else None
-    if not isinstance(rows,list):
-        print("HOCKEY_RESPONSE invalid")
-        return
+    rows_by_id={}
+    for index,day in enumerate((now.date(),now.date()-timedelta(days=1))):
+        if index:
+            if not reserve(budget,now.date().isoformat(),"extra"):
+                break
+            save(path,secret,state)
+        url="https://api.bigballsdata.com/v1/matches?sport=ice_hockey&league=nhl&date="+day.isoformat()+"&limit=50"
+        try:
+            req=urllib.request.Request(url,headers={"x-api-key":key,"Accept":"application/json"})
+            with urllib.request.build_opener(NoRedirect()).open(req,timeout=25) as response:
+                data=json.load(response)
+        except urllib.error.HTTPError as e:
+            if e.code in (401,403,429):
+                budget["blocked"]=True
+            save(path,secret,state)
+            print("HOCKEY_HTTP",e.code)
+            break
+        except (OSError,ValueError):
+            print("HOCKEY_REQUEST unavailable")
+            continue
+        batch=data.get("data") if isinstance(data,dict) else None
+        if not isinstance(batch,list):
+            print("HOCKEY_RESPONSE invalid")
+            continue
+        for row in batch:
+            if isinstance(row,dict) and row.get("id") is not None:
+                rows_by_id.setdefault(str(row["id"]),row)
+    rows=list(rows_by_id.values())
     # Log only non-sensitive schema evidence, never infer periods from arrays.
     for row in rows:
         if not isinstance(row,dict) or row.get("status")!="live":
