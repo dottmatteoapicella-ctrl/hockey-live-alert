@@ -10,7 +10,149 @@ def stamp(value):
     except (AttributeError,ValueError,TypeError):
         return None
 
-ALIASES = {"washingtoncapitals":["wascapitals","was"],"floridapanthers":["flapanthers","fla"],"bostonbruins":["bosbruins","bos"],"torontomapleleafs":["tormapleleafs","tor"]}
+ALIASES = {
+    "anaheimducks": [
+        "anaducks",
+        "ana"
+    ],
+    "bostonbruins": [
+        "bosbruins",
+        "bos"
+    ],
+    "buffalosabres": [
+        "bufsabres",
+        "buf"
+    ],
+    "calgaryflames": [
+        "cgyflames",
+        "cgy"
+    ],
+    "carolinahurricanes": [
+        "carhurricanes",
+        "car"
+    ],
+    "chicagoblackhawks": [
+        "chiblackhawks",
+        "chi"
+    ],
+    "coloradoavalanche": [
+        "colavalanche",
+        "col"
+    ],
+    "columbusbluejackets": [
+        "cbjbluejackets",
+        "clsbluejackets",
+        "cbj"
+    ],
+    "dallasstars": [
+        "dalstars",
+        "dal"
+    ],
+    "detroitredwings": [
+        "detredwings",
+        "det"
+    ],
+    "edmontonoilers": [
+        "edmoilers",
+        "edm"
+    ],
+    "floridapanthers": [
+        "flapanthers",
+        "fla"
+    ],
+    "losangeleskings": [
+        "lakings",
+        "lakkings",
+        "lak"
+    ],
+    "minnesotawild": [
+        "minwild",
+        "min"
+    ],
+    "montrealcanadiens": [
+        "mtlcanadiens",
+        "moncanadiens",
+        "mtl"
+    ],
+    "nashvillepredators": [
+        "nshpredators",
+        "naspredators",
+        "nsh"
+    ],
+    "newjerseydevils": [
+        "njdevils",
+        "njddevils",
+        "njd"
+    ],
+    "newyorkislanders": [
+        "nyislanders",
+        "nyiislanders",
+        "nyi"
+    ],
+    "newyorkrangers": [
+        "nyrangers",
+        "nyrrangers",
+        "nyr"
+    ],
+    "ottawasenators": [
+        "ottsenators",
+        "ott"
+    ],
+    "philadelphiaflyers": [
+        "phiflyers",
+        "phi"
+    ],
+    "pittsburghpenguins": [
+        "pitpenguins",
+        "pit"
+    ],
+    "sanjosesharks": [
+        "sjsharks",
+        "sjssharks",
+        "sjs"
+    ],
+    "seattlekraken": [
+        "seakraken",
+        "sea"
+    ],
+    "stlouisblues": [
+        "stlblues",
+        "stl"
+    ],
+    "tampabaylightning": [
+        "tblightning",
+        "tbllightning",
+        "tbl"
+    ],
+    "torontomapleleafs": [
+        "tormapleleafs",
+        "tor"
+    ],
+    "utahmammoth": [
+        "utamammoth",
+        "utah",
+        "uta"
+    ],
+    "vancouvercanucks": [
+        "vancanucks",
+        "van"
+    ],
+    "vegasgoldenknights": [
+        "veggoldenknights",
+        "vgkgoldenknights",
+        "vgk"
+    ],
+    "washingtoncapitals": [
+        "wascapitals",
+        "was",
+        "wshcapitals",
+        "wsh"
+    ],
+    "winnipegjets": [
+        "wpgjets",
+        "wpg"
+    ]
+}
 
 def name(value):
     if isinstance(value,dict):
@@ -53,7 +195,7 @@ def favorite_diagnostic(row,records):
     for r in records:
         if not isinstance(r,dict):
             continue
-        rt=set(r.get("teams",[]))
+        rt=set(name(t) for t in r.get("teams",[]))
         if rt!=set(teams):
             if rt.intersection(teams):
                 reasons.add("one_team_only")
@@ -65,7 +207,17 @@ def favorite_diagnostic(row,records):
         if abs(rs-start)>timedelta(minutes=30):
             reasons.add("kickoff_mismatch")
             continue
-        p=[r.get("prices",{}).get(t) for t in teams]
+        normalized_prices={}
+        conflict=False
+        for k,v in r.get("prices",{}).items():
+            canonical=name(k)
+            if canonical in normalized_prices and normalized_prices[canonical]!=v:
+                conflict=True
+            normalized_prices[canonical]=v
+        if conflict:
+            reasons.add("invalid_prices")
+            continue
+        p=[normalized_prices.get(t) for t in teams]
         if all(type(x) in (int,float) and math.isfinite(x) and x>1 for x in p) and p[0]!=p[1]:
             candidates.append((0 if p[0]<p[1] else 1,p))
         else:
